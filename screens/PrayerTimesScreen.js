@@ -19,48 +19,56 @@ export default function PrayerTimesScreen({ navigation }) {
   const [locationName, setLocationName] = useState('جاري تحديد الموقع...');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  useEffect(() => {
+    useEffect(() => {
     (async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         let coords;
+        
         if (status !== 'granted') {
-          // Default to Gaza if permission denied
           coords = new Coordinates(31.5017, 34.4668);
-          setLocationName('غزة، فلسطين (الموقع الافتراضي)');
+          setLocationName('غزة (افتراضي للصلاحيات)');
         } else {
-          let location = await Location.getCurrentPositionAsync({});
-          coords = new Coordinates(location.coords.latitude, location.coords.longitude);
-          
-          let reverseGeocode = await Location.reverseGeocodeAsync({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
-          });
-          
-          if (reverseGeocode.length > 0) {
-            const place = reverseGeocode[0];
-            setLocationName(`${place.city || place.region}, ${place.country}`);
-          } else {
-            setLocationName('موقعك الحالي');
+          try {
+            let location = await Location.getCurrentPositionAsync({});
+            coords = new Coordinates(location.coords.latitude, location.coords.longitude);
+            
+            try {
+              let reverseGeocode = await Location.reverseGeocodeAsync({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude
+              });
+              
+              if (reverseGeocode.length > 0) {
+                const place = reverseGeocode[0];
+                setLocationName(`${place.city || place.region}, ${place.country}`);
+              } else {
+                setLocationName('موقعك (بدون انترنت)');
+              }
+            } catch (e) {
+              setLocationName('موقعك (بدون انترنت)');
+            }
+          } catch(e) {
+             // If GPS fails completely, fallback to Gaza
+             coords = new Coordinates(31.5017, 34.4668);
+             setLocationName('غزة (افتراضي - بدون انترنت)');
           }
         }
 
         const date = new Date();
         const params = CalculationMethod.MuslimWorldLeague();
         const prayers = new PrayerTimes(coords, date, params);
-
-        setPrayerTimes({
-          fajr: prayers.fajr,
-          sunrise: prayers.sunrise,
-          dhuhr: prayers.dhuhr,
-          asr: prayers.asr,
-          maghrib: prayers.maghrib,
-          isha: prayers.isha,
-        });
-
+        
+        setPrayerTimes(prayers);
+        setLoading(false);
       } catch (error) {
-        console.warn(error);
-      } finally {
+        console.error(error);
+        
+        // Final fallback if EVERYTHING crashes
+        const fallbackCoords = new Coordinates(31.5017, 34.4668);
+        const prayers = new PrayerTimes(fallbackCoords, new Date(), CalculationMethod.MuslimWorldLeague());
+        setPrayerTimes(prayers);
+        setLocationName('غزة (بدون انترنت)');
         setLoading(false);
       }
     })();

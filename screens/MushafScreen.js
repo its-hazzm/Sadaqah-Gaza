@@ -4,6 +4,7 @@ import {
   ScrollView, StatusBar, ActivityIndicator, FlatList, Dimensions, useWindowDimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { QuranData } from '../data/quran_offline';
 
 
 const TOTAL_PAGES = 604;
@@ -32,18 +33,9 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    fetch(`https://api.alquran.cloud/v1/page/${pageNum}/quran-uthmani`)
-      .then(res => res.json())
-      .then(json => {
-        if (isMounted && json.code === 200) {
-          setData(json.data);
-          setLoading(false);
-        }
-      })
-      .catch(() => { if (isMounted) setLoading(false); });
-    return () => { isMounted = false; };
+    // تحميل الصفحة فورياً وبدون انترنت!
+    setData(QuranData[pageNum]);
+    setLoading(false);
   }, [pageNum]);
 
   if (loading || !data) {
