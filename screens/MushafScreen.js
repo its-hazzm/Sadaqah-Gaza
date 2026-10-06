@@ -123,6 +123,10 @@ export default function MushafScreen({ route, navigation }) {
   const [isVerticalSwipe, setIsVerticalSwipe] = useState(true); // Default to TikTok mode!
   const [currentPage, setCurrentPage] = useState(route?.params?.page || 1);
   const flatListRef = useRef(null);
+  const [listLayout, setListLayout] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 150 });
+  
+  // To avoid rapid tap bugs
+  const isNavigating = useRef(false);
 
   const saveBookmark = async () => {
     try {
@@ -138,13 +142,21 @@ export default function MushafScreen({ route, navigation }) {
   };
 
   const goNext = () => {
-    if (currentPage < TOTAL_PAGES) {
-      flatListRef.current?.scrollToIndex({ index: currentPage, animated: true });
+    if (currentPage < TOTAL_PAGES && !isNavigating.current) {
+      isNavigating.current = true;
+      const next = currentPage + 1;
+      setCurrentPage(next);
+      flatListRef.current?.scrollToIndex({ index: next - 1, animated: true });
+      setTimeout(() => { isNavigating.current = false; }, 300);
     }
   };
   const goPrev = () => {
-    if (currentPage > 1) {
-      flatListRef.current?.scrollToIndex({ index: currentPage - 2, animated: true });
+    if (currentPage > 1 && !isNavigating.current) {
+      isNavigating.current = true;
+      const prev = currentPage - 1;
+      setCurrentPage(prev);
+      flatListRef.current?.scrollToIndex({ index: prev - 1, animated: true });
+      setTimeout(() => { isNavigating.current = false; }, 300);
     }
   };
 
@@ -166,10 +178,10 @@ export default function MushafScreen({ route, navigation }) {
   const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
   const renderItem = useCallback(({ item }) => (
-    <View style={{ width: SCREEN_WIDTH, height: isVerticalSwipe ? SCREEN_HEIGHT - 150 : '100%' }}>
+    <View style={{ width: isVerticalSwipe ? '100%' : listLayout.width, height: isVerticalSwipe ? listLayout.height : '100%' }}>
       <QuranPageContent pageNum={item} theme={theme} />
     </View>
-  ), [theme, isVerticalSwipe]);
+  ), [theme, isVerticalSwipe, listLayout]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -204,19 +216,20 @@ export default function MushafScreen({ route, navigation }) {
         <Text style={[styles.headerPage, { color: theme.primary }]}>صفحة {currentPage}</Text>
       </View>
 
+      <View style={{ flex: 1 }} onLayout={(e) => setListLayout(e.nativeEvent.layout)}>
       <FlatList
         key={isVerticalSwipe ? "V" : "H"}
         ref={flatListRef}
         data={PAGES_DATA}
         keyExtractor={item => item.toString()}
         horizontal={!isVerticalSwipe}
-        inverted={!isVerticalSwipe} // Arabic reading direction
+        inverted={!isVerticalSwipe}
         pagingEnabled={true}
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         initialScrollIndex={currentPage - 1}
         getItemLayout={(data, index) => {
-          const size = isVerticalSwipe ? SCREEN_HEIGHT - 150 : SCREEN_WIDTH;
+          const size = isVerticalSwipe ? listLayout.height : listLayout.width;
           return { length: size, offset: size * index, index };
         }}
         onViewableItemsChanged={onViewableItemsChanged}
@@ -225,8 +238,9 @@ export default function MushafScreen({ route, navigation }) {
         windowSize={5}
         initialNumToRender={2}
         maxToRenderPerBatch={3}
-        removeClippedSubviews={false} // Fixes the blank page bug on Web!
+        removeClippedSubviews={false}
       />
+      </View>
 
       {/* شريط التنقل السفلي */}
       <View style={[styles.bottomNav, { backgroundColor: theme.navBg, borderTopColor: theme.border }]}>
