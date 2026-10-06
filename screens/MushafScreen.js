@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { QuranData } from '../data/quran_offline';
+import { TafsirData } from '../data/tafsir_offline';
 
 
 const TOTAL_PAGES = 604;
@@ -31,6 +32,17 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTafsir, setActiveTafsir] = useState(null);
+  const lastTapRef = useRef({});
+
+  const handleAyahPress = (ayahNum) => {
+    const now = Date.now();
+    const lastTap = lastTapRef.current[ayahNum] || 0;
+    if (now - lastTap < 400) {
+      setActiveTafsir(activeTafsir === ayahNum ? null : ayahNum);
+    }
+    lastTapRef.current[ayahNum] = now;
+  };
 
   useEffect(() => {
     // تحميل الصفحة فورياً وبدون انترنت!
@@ -73,9 +85,18 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
                 if (group.surahNum !== 1 && ayah.numberInSurah === 1 && text.startsWith('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ')) {
                   text = text.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ', '');
                 }
+                const isTafsir = activeTafsir === ayah.number;
                 return (
-                  <Text key={ayah.number} style={styles.ayahText}>
-                    {text} <Text style={[styles.ayahNum, { color: theme.primary }]}> ﴿{toArabicNum(ayah.numberInSurah)}﴾ </Text>
+                  <Text key={ayah.number}>
+                    <Text style={styles.ayahText} onPress={() => handleAyahPress(ayah.number)}>
+                      {text} <Text style={[styles.ayahNum, { color: theme.primary }]}> ﴿{toArabicNum(ayah.numberInSurah)}﴾ </Text>
+                    </Text>
+                    {isTafsir && (
+                      <Text onPress={() => setActiveTafsir(null)}>
+                        {"\n"}<Text style={[styles.tafsirLabel, { color: theme.primary }]}>التفسير الميسر: </Text>
+                        <Text style={[styles.tafsirText, { color: theme.primary }]}>{TafsirData[pageNum][ayah.number]}</Text>{"\n"}
+                      </Text>
+                    )}
                   </Text>
                 );
               })}
