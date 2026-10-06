@@ -103,6 +103,19 @@ export default function MushafScreen({ route, navigation }) {
   const [currentPage, setCurrentPage] = useState(route?.params?.page || 1);
   const flatListRef = useRef(null);
 
+  const saveBookmark = async () => {
+    try {
+      await AsyncStorage.setItem('quran_bookmark', currentPage.toString());
+      if (Platform.OS === 'web') {
+        alert('تم حفظ العلامة المرجعية عند الصفحة ' + currentPage);
+      } else {
+        Alert.alert('تم الحفظ', 'تم حفظ العلامة المرجعية عند الصفحة ' + currentPage);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const goNext = () => {
     if (currentPage < TOTAL_PAGES) {
       flatListRef.current?.scrollToIndex({ index: currentPage, animated: true });
@@ -148,6 +161,9 @@ export default function MushafScreen({ route, navigation }) {
         </TouchableOpacity>
         
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 15}}>
+          <TouchableOpacity onPress={saveBookmark}>
+            <MaterialCommunityIcons name="bookmark-plus" size={28} color={theme.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setIsVerticalSwipe(!isVerticalSwipe)}>
             <MaterialCommunityIcons 
               name={isVerticalSwipe ? "view-sequential" : "book-open-page-variant"} 

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   FlatList, StatusBar, TextInput,
@@ -12,6 +14,23 @@ const surahStartPages = [
 
 export default function QuranScreen({ navigation }) {
   const [search, setSearch] = useState('');
+  const [bookmark, setBookmark] = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadBookmark = async () => {
+        try {
+          const savedPage = await AsyncStorage.getItem('quran_bookmark');
+          if (savedPage !== null) {
+            setBookmark(parseInt(savedPage));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      loadBookmark();
+    }, [])
+  );
 
   const filtered = surahs.filter(s =>
     s.name.includes(search) || String(s.number).includes(search)
@@ -30,6 +49,19 @@ export default function QuranScreen({ navigation }) {
       </View>
 
       {/* أزرار الأعلى */}
+      
+      {bookmark !== null && (
+        <TouchableOpacity
+          style={[styles.topBtn, { backgroundColor: '#c9a84c', marginBottom: 15, marginHorizontal: 20 }]}
+          onPress={() => navigation.navigate('Mushaf', { page: bookmark })}
+        >
+          <Text style={[styles.topBtnText, { color: '#071a0b', fontWeight: 'bold' }]}>
+            🔖 متابعة القراءة (صفحة {bookmark})
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* أزرار علوية */}
       <View style={styles.topBtns}>
         <TouchableOpacity
           style={[styles.topBtn, { flex: 1.2 }]}

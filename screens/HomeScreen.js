@@ -55,7 +55,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.iconCircle}>
               <FontAwesome5 name="seedling" size={20} color="#c9a84c" />
             </View>
-            <Text style={styles.dedicationTitle}إ > إهداء إلا روح الشهيد بإذن الله تعالى </Text>
+            <Text style={styles.dedicationTitle}إ > إهداء إلى روح الشهيد بإذن الله تعالى </Text>
             <Text style={styles.dedicationName}>أمير محمد نوفل</Text>
             <Text style={styles.dedicationGaza}>وأرواح شهداء وأموات الشعب الفلسطيني في غزة</Text>
             <Text style={styles.dedicationDua}>اللهم اغفر لهم وارحمهم وأسكنهم فسيح جناتك</Text>
