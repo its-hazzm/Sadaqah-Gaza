@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Amir App",
+    "slug": "amir-nofal-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#071a0b"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.amirnofal.azkar"
+    },
+    "android": {
+      "package": "com.amirnofal.azkar",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#071a0b"
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "icon": "./assets/icon.png",
+    "owner": "its.hazzm",
+    "extra": {
+      "eas": {
+        "projectId": "87a2791b-36cf-480f-a1e5-f1aa57ec2f96"
+      }
+    }
+  }
+}
