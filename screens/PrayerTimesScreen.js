@@ -88,6 +88,17 @@ export default function PrayerTimesScreen({ navigation }) {
   const schedulePrayerNotifications = async () => {
     if (!prayerTimes) return;
 
+    if (notificationsEnabled) {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      setNotificationsEnabled(false);
+      if (Platform.OS !== 'web') {
+        Alert.alert('تم الإيقاف', 'تم إيقاف إشعارات الصلاة بنجاح.');
+      } else {
+        alert('تم الإيقاف: تم إيقاف إشعارات الصلاة بنجاح.');
+      }
+      return;
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== 'granted') {
@@ -96,7 +107,7 @@ export default function PrayerTimesScreen({ navigation }) {
     }
     if (finalStatus !== 'granted') {
       if (Platform.OS !== 'web') {
-        Alert.alert('تنبيه', 'يرجى تفعيل صلاحية الإشعارات من إعدادات الهاتف.');
+        Alert.alert('تنبيه', 'يجب إعطاء صلاحية الإشعارات من إعدادات الهاتف.');
       }
       return;
     }
@@ -118,8 +129,8 @@ export default function PrayerTimesScreen({ navigation }) {
       if (prayer.time > now) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: `حان الآن موعد صلاة ${prayer.name}`,
-            body: 'الله أكبر الله أكبر الله أكبر الله أكبر، حي على الصلاة',
+            title: `حان الآن موعد أذان ${prayer.name}`,
+            body: 'تطبيق الشهيد أمير نوفل يذكرك بالصلاة',
             sound: true,
           },
           trigger: {
@@ -131,9 +142,9 @@ export default function PrayerTimesScreen({ navigation }) {
 
     setNotificationsEnabled(true);
     if (Platform.OS !== 'web') {
-      Alert.alert('تم التفعيل', 'تم تفعيل التنبيهات للصلوات القادمة اليوم بنجاح.');
+      Alert.alert('تم التفعيل', 'تم تفعيل إشعارات الصلاة بنجاح.');
     } else {
-      alert('تم تفعيل التنبيهات. (تنبيه: تعمل الإشعارات بشكل أفضل على التطبيق الفعلي).');
+      alert('تم التفعيل: تم تفعيل إشعارات الصلاة بنجاح. (ملاحظة: الإشعارات تعمل بشكل أفضل على التطبيق).');
     }
   };
 
@@ -193,7 +204,7 @@ export default function PrayerTimesScreen({ navigation }) {
             color={notificationsEnabled ? "#071a0b" : "#c9a84c"} 
           />
           <Text style={[styles.notifyText, notificationsEnabled && styles.notifyTextActive]}>
-            {notificationsEnabled ? 'تم تفعيل إشعارات اليوم' : 'تفعيل إشعارات الأذان'}
+            {notificationsEnabled ? 'إيقاف إشعارات الصلاة' : 'تفعيل إشعارات الصلاة'}
           </Text>
         </TouchableOpacity>
 
