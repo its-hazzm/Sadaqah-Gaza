@@ -120,7 +120,7 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
 export default function MushafScreen({ route, navigation }) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isVerticalSwipe, setIsVerticalSwipe] = useState(true); // Default to TikTok mode!
+  const [isVerticalSwipe, setIsVerticalSwipe] = useState(false); // Default to Horizontal Book mode!
   const [currentPage, setCurrentPage] = useState(route?.params?.page || 1);
   const flatListRef = useRef(null);
   const [listLayout, setListLayout] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 150 });
@@ -299,9 +299,9 @@ const styles = StyleSheet.create({
   surahHeader: { alignItems: 'center', justifyContent: 'center', marginVertical: 15, paddingVertical: 12, borderRadius: 15, borderWidth: 1 },
   surahHeaderName: { fontSize: 24, fontFamily: 'Amiri', fontWeight: 'bold' },
   bismillah: { fontSize: 24, textAlign: 'center', fontFamily: 'Amiri', lineHeight: 46, marginBottom: 15 },
-  versesText: { textAlign: 'justify', writingDirection: 'rtl', lineHeight: 52, paddingHorizontal: 4 },
-  ayahText: { fontSize: 25, fontFamily: 'Amiri' },
-  ayahNum: { fontSize: 20, fontFamily: 'Amiri' },
+  versesText: { textAlign: 'justify', writingDirection: 'rtl', lineHeight: 46, paddingHorizontal: 4 },
+  ayahText: { fontSize: 23, fontFamily: 'Amiri' },
+  ayahNum: { fontSize: 18, fontFamily: 'Amiri' },
   pageNumContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
   pageNumLine: { flex: 1, height: 1 },
   pageNumText: { fontSize: 16, paddingHorizontal: 16, fontFamily: 'serif', fontWeight: 'bold' },
