@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, StatusBar, ActivityIndicator, FlatList, Dimensions, useWindowDimensions,
+  ScrollView, StatusBar, ActivityIndicator, FlatList, Dimensions, useWindowDimensions, Alert, Platform, Share,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QuranData } from '../data/quran_offline';
 import { TafsirData } from '../data/tafsir_offline';
 
@@ -28,12 +29,30 @@ function groupBySurah(ayahs) {
   return groups;
 }
 
-const QuranPageContent = memo(({ pageNum, theme }) => {
+const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale }) => {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const [data, setData] = useState(null);
+  
+  // Dynamic sizing to guarantee it perfectly fits TikTok-style!
+  const availableHeight = listLayout ? listLayout.height : Dimensions.get('window').height - 150;
+  // A Quran page usually has 15 lines. We divide by ~17 to leave room for borders and headers
+  const dynamicLineHeight = Math.floor((availableHeight / 17) * (fontScale || 1)); 
+  const dynamicFontSize = Math.floor(dynamicLineHeight * 0.58);
+  const dynamicAyahNumSize = Math.floor(dynamicFontSize * 0.8);
+  
   const [loading, setLoading] = useState(true);
   const [activeTafsir, setActiveTafsir] = useState(null);
   const lastTapRef = useRef({});
+
+    const shareAyah = async (ayahText, surahName, ayahNum) => {
+    try {
+      await Share.share({
+        message: `﴿${ayahText}﴾\n[سورة ${surahName} - آية ${ayahNum}]\n\n- صدقة جارية عن روح الشهيد أمير محمد نوفل`
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const handleAyahPress = (ayahNum) => {
     const now = Date.now();
@@ -62,16 +81,17 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
   const groups = groupBySurah(data.ayahs);
 
   return (
-    <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} nestedScrollEnabled={true}>
+      {/* Top Header outside the frame */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 6 }}>
+        <Text style={{ fontSize: 15, fontFamily: 'Amiri', color: theme.primary, fontWeight: 'bold' }}>الجزء {toArabicNum(data.ayahs[0].juz)}</Text>
+        <Text style={{ fontSize: 15, fontFamily: 'Amiri', color: theme.primary, fontWeight: 'bold' }}>سورة {data.ayahs[0].surah.name.replace('سُورَةُ ', '').replace('سورة ', '')}</Text>
+      </View>
       <View style={[styles.pageFrameOuter, { borderColor: theme.primary, backgroundColor: theme.primary + '0A' }]}>
         <View style={[styles.pageFrameInner, { borderColor: theme.primary }]}>
         {groups.map((group, idx) => (
           <View key={idx}>
-            <View style={[styles.surahHeader, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}>
-              <Text style={[styles.surahHeaderName, { color: theme.primary }]}>
-                سُورَةُ {group.surahName.replace('سورة ', '')}
-              </Text>
-            </View>
+            
 
             {(group.surahNum !== 1 && group.surahNum !== 9 && group.ayahs[0].numberInSurah === 1) && (
               <Text style={[styles.bismillah, { color: theme.primary }]}>
@@ -79,7 +99,7 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
               </Text>
             )}
 
-            <Text style={[styles.versesText, { color: theme.textVerse }]}>
+            <Text style={[styles.versesText, { color: theme.textVerse, fontSize: dynamicFontSize, lineHeight: dynamicLineHeight }]}>
               {group.ayahs.map((ayah) => {
                 let text = ayah.text;
                 if (group.surahNum !== 1 && ayah.numberInSurah === 1 && text.startsWith('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ')) {
@@ -88,14 +108,20 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
                 const isTafsir = activeTafsir === ayah.number;
                 return (
                   <Text key={ayah.number}>
-                    <Text style={styles.ayahText} onPress={() => handleAyahPress(ayah.number)}>
-                      {text} <Text style={[styles.ayahNum, { color: theme.primary }]}> ﴿{toArabicNum(ayah.numberInSurah)}﴾ </Text>
+                    <Text style={[styles.ayahText, { fontSize: dynamicFontSize, lineHeight: dynamicLineHeight }]} onPress={() => handleAyahPress(ayah.number)}>
+                      {text} <Text style={[styles.ayahNum, { color: theme.primary, fontSize: dynamicAyahNumSize }]}> ﴿{toArabicNum(ayah.numberInSurah)}﴾ </Text>
                     </Text>
                     {isTafsir && (
-                      <Text onPress={() => setActiveTafsir(null)}>
-                        {"\n"}<Text style={[styles.tafsirLabel, { color: theme.primary }]}>التفسير الميسر: </Text>
-                        <Text style={[styles.tafsirText, { color: theme.primary }]}>{TafsirData[pageNum][ayah.number]}</Text>{"\n"}
-                      </Text>
+                      <View style={{ backgroundColor: theme.primary + '1A', padding: 10, borderRadius: 8, marginVertical: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                          <Text style={[styles.tafsirLabel, { color: theme.primary, fontFamily: 'CairoBold' }]}>التفسير الميسر:</Text>
+                          <TouchableOpacity onPress={() => shareAyah(text, group.surahName.replace('سُورَةُ ', ''), ayah.numberInSurah)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                            <Text style={{ color: theme.primary, fontFamily: 'Cairo', fontSize: 12 }}>مشاركة الآية</Text>
+                            <MaterialCommunityIcons name="share-variant" size={18} color={theme.primary} />
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.tafsirText, { color: theme.textVerse }]} onPress={() => setActiveTafsir(null)}>{TafsirData[pageNum][ayah.number]}</Text>
+                      </View>
                     )}
                   </Text>
                 );
@@ -120,9 +146,34 @@ const QuranPageContent = memo(({ pageNum, theme }) => {
 export default function MushafScreen({ route, navigation }) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isVerticalSwipe, setIsVerticalSwipe] = useState(false); // Default to Horizontal Book mode!
+
+  useEffect(() => {
+    AsyncStorage.getItem('quranDarkMode').then(val => {
+      if (val !== null) setIsDarkMode(val === 'true');
+    });
+  }, []);
+
+  const toggleDarkMode = async () => {
+    const newVal = !isDarkMode;
+    setIsDarkMode(newVal);
+    await AsyncStorage.setItem('quranDarkMode', newVal.toString());
+  };
+  const [isVerticalSwipe, setIsVerticalSwipe] = useState(true); // Default to TikTok mode!
   const [currentPage, setCurrentPage] = useState(route?.params?.page || 1);
   const flatListRef = useRef(null);
+  const [fontScale, setFontScale] = useState(1);
+
+  useEffect(() => {
+    AsyncStorage.getItem('quranFontScale').then(val => {
+      if (val) setFontScale(parseFloat(val));
+    });
+  }, []);
+
+  const changeFontScale = async (amount) => {
+    const newScale = Math.max(0.6, Math.min(2.5, fontScale + amount));
+    setFontScale(newScale);
+    await AsyncStorage.setItem('quranFontScale', newScale.toString());
+  };
   const [listLayout, setListLayout] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT - 150 });
   
   // To avoid rapid tap bugs
@@ -160,7 +211,7 @@ export default function MushafScreen({ route, navigation }) {
     }
   };
 
-  const theme = {
+  const theme = useMemo(() => ({
     bg: isDarkMode ? '#0b2010' : '#fcf8f2',
     headerBg: isDarkMode ? '#071a0b' : '#ffffff',
     textMain: isDarkMode ? '#ffffff' : '#1a202c',
@@ -168,7 +219,7 @@ export default function MushafScreen({ route, navigation }) {
     primary: isDarkMode ? '#c9a84c' : '#2d6a4f',
     navBg: isDarkMode ? '#071a0b' : '#f8f9fa',
     border: isDarkMode ? '#c9a84c66' : '#cbd5e0',
-  };
+  }), [isDarkMode]);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }) => {
     if (viewableItems && viewableItems.length > 0) {
@@ -179,9 +230,9 @@ export default function MushafScreen({ route, navigation }) {
 
   const renderItem = useCallback(({ item }) => (
     <View style={{ width: isVerticalSwipe ? '100%' : listLayout.width, height: isVerticalSwipe ? listLayout.height : '100%' }}>
-      <QuranPageContent pageNum={item} theme={theme} />
+      <QuranPageContent pageNum={item} theme={theme} listLayout={listLayout} fontScale={fontScale} />
     </View>
-  ), [theme, isVerticalSwipe, listLayout]);
+  ), [theme, isVerticalSwipe, listLayout, fontScale]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -194,6 +245,12 @@ export default function MushafScreen({ route, navigation }) {
         </TouchableOpacity>
         
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 15}}>
+          <TouchableOpacity onPress={() => changeFontScale(0.08)}>
+            <MaterialCommunityIcons name="magnify-plus-outline" size={28} color={theme.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => changeFontScale(-0.08)}>
+            <MaterialCommunityIcons name="magnify-minus-outline" size={28} color={theme.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={saveBookmark}>
             <MaterialCommunityIcons name="bookmark-plus" size={28} color={theme.primary} />
           </TouchableOpacity>
@@ -204,7 +261,7 @@ export default function MushafScreen({ route, navigation }) {
               color={theme.primary} 
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setIsDarkMode(!isDarkMode)}>
+          <TouchableOpacity onPress={toggleDarkMode}>
             <MaterialCommunityIcons 
               name={isDarkMode ? "weather-night" : "weather-sunny"} 
               size={26} 
@@ -219,14 +276,20 @@ export default function MushafScreen({ route, navigation }) {
       <View style={{ flex: 1 }} onLayout={(e) => setListLayout(e.nativeEvent.layout)}>
       <FlatList
         key={isVerticalSwipe ? "V" : "H"}
+        extraData={{ theme, isVerticalSwipe, listLayout, fontScale }}
         ref={flatListRef}
         data={PAGES_DATA}
         keyExtractor={item => item.toString()}
         horizontal={!isVerticalSwipe}
         inverted={!isVerticalSwipe}
         pagingEnabled={true}
-        showsHorizontalScrollIndicator={false}
-        showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          updateCellsBatchingPeriod={50}
         initialScrollIndex={currentPage - 1}
         getItemLayout={(data, index) => {
           const size = isVerticalSwipe ? listLayout.height : listLayout.width;

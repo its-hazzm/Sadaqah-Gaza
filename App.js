@@ -16,6 +16,7 @@ import HadithListScreen from './screens/HadithListScreen';
 import AzkarCategoriesScreen from './screens/AzkarCategoriesScreen';
 import SplashScreenCustom from './screens/SplashScreenCustom';
 import PrayerTimesScreen from './screens/PrayerTimesScreen';
+import SubhaScreen from './screens/SubhaScreen';
 import {
   duaaMotawafa, adiya,
 } from './data/azkar';
@@ -86,6 +87,7 @@ export default function App() {
         {/* الأحاديث الشريفة - مصنفة بالمواضيع */}
         <Stack.Screen name="Ahadith" component={HadithCategoriesScreen} />
         <Stack.Screen name="HadithList" component={HadithListScreen} />
+        <Stack.Screen name="Subha" component={SubhaScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>

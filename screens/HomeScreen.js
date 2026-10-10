@@ -1,9 +1,12 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, StatusBar, Dimensions, Image,
+  ScrollView, StatusBar, Dimensions, Image, Share, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useState } from 'react';
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
@@ -12,12 +15,40 @@ const menuItems = [
   { id: 2, title: 'القرآن الكريم', subtitle: 'قراءة، بحث، ومتابعة الختمة', screen: 'Quran', color: '#c9a84c', icon: 'book-open-page-variant', lib: 'MaterialCommunityIcons', fullWidth: true },
   { id: 1, title: 'أدعية للمتوفي', subtitle: 'أدعية مأثورة للشهيد بإذن الله', screen: 'DuaaMotawafa', color: '#2d6a4f', icon: 'praying-hands', lib: 'FontAwesome5', fullWidth: true },
   { id: 6, title: 'مواقيت الصلاة', subtitle: 'مواقيت وتنبيهات الأذان', screen: 'PrayerTimes', color: '#6d2e6e', icon: 'mosque', lib: 'MaterialCommunityIcons' },
-  { id: 3, title: 'حصن المسلم', subtitle: 'من الأذكار اليومية', screen: 'AzkarCategories', color: '#1d3557', icon: 'shield-sun', lib: 'MaterialCommunityIcons' },
+  { id: 3, title: 'أذكار الصباح والمساء', subtitle: 'حصن المسلم', screen: 'AzkarCategories', color: '#1d3557', icon: 'shield-sun', lib: 'MaterialCommunityIcons' },
   { id: 4, title: 'أدعية وأوراد', subtitle: 'أدعية منوعة نافعة', screen: 'Adiya', color: '#7b4f12', icon: 'hands', lib: 'FontAwesome5' },
-  { id: 5, title: 'أحاديث نبوية', subtitle: 'من صحيح السنة الشريفة', screen: 'Ahadith', color: '#1b4332', icon: 'script-text', lib: 'MaterialCommunityIcons' }
+  { id: 5, title: 'أحاديث نبوية', subtitle: 'من صحيح السنة الشريفة', screen: 'Ahadith', color: '#1b4332', icon: 'script-text', lib: 'MaterialCommunityIcons' },
+  { id: 7, title: 'السبحة الإلكترونية', subtitle: 'مسبحة ذكية مع حفظ العدد', screen: 'Subha', color: '#5e548e', icon: 'gesture-tap-button', lib: 'MaterialCommunityIcons', fullWidth: true }
 ];
 
 export default function HomeScreen({ navigation }) {
+  const [bookmark, setBookmark] = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadBookmark = async () => {
+        try {
+          const savedPage = await AsyncStorage.getItem('quran_bookmark');
+          if (savedPage !== null) {
+            setBookmark(parseInt(savedPage));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      loadBookmark();
+    }, [])
+  );
+    const shareApp = async () => {
+    try {
+      await Share.share({
+        message: 'تطبيق القرآن الكريم والأذكار ومواقيت الصلاة - صدقة جارية عن روح الشهيد أمير محمد نوفل.\nحمل التطبيق وشاركنا الأجر:\nhttps://play.google.com/store/apps/details?id=com.hazzm.amirnofal'
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const renderIcon = (item) => {
     if (item.lib === 'FontAwesome5') {
       return <FontAwesome5 name={item.icon} size={28} color={item.color} />;
@@ -104,8 +135,35 @@ export default function HomeScreen({ navigation }) {
           ))}
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>صدقة جارية 🤍</Text>
+        <View style={styles.footerContainer}>
+          
+          <View style={styles.developerRow}>
+            {/* Left: Contact Icons */}
+            <View style={styles.contactContainer}>
+              <Text style={[styles.devTitle, { textAlign: 'left', marginBottom: 6 }]}>للتواصل</Text>
+              <View style={styles.socialIcons}>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL('https://wa.me/message/KXT6CEGORRKWD1').catch(err => console.error('Error opening WhatsApp', err))}>
+                  <FontAwesome5 name="whatsapp" size={18} color="#25D366" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL('https://instagram.com/hazm_nofal').catch(err => console.error('Error opening Instagram', err))}>
+                  <FontAwesome5 name="instagram" size={18} color="#E1306C" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Center: Sadaqah Jariyah */}
+            <View style={styles.centerFooter}>
+              <Text style={styles.footerText}>صدقة جارية 🤍</Text>
+            </View>
+
+            {/* Right: Developer Info */}
+            <View style={styles.developerTextContainer}>
+              <Text style={styles.devTitle}>إعداد وتطوير</Text>
+              <Text style={styles.devName}>حازم نوفل</Text>
+              <Text style={styles.devNameEn}>Hazem Nofal</Text>
+            </View>
+          </View>
+          
         </View>
         </View>
       </ScrollView>
@@ -273,14 +331,67 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  footer: {
-    marginTop: 20,
+  footerContainer: {
+    marginTop: 25,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#c9a84c22',
+  },
+  developerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    opacity: 0.6,
+    width: '100%',
+    paddingHorizontal: 5,
+  },
+  contactContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  socialIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0a1628',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#c9a84c44',
+  },
+  centerFooter: {
+    flex: 1,
+    alignItems: 'center',
   },
   footerText: {
     color: '#c9a84c',
     fontSize: 14,
+    fontFamily: 'CairoBold',
+    opacity: 0.9,
+  },
+  developerTextContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  devTitle: {
+    color: '#a0aec0',
+    fontSize: 10,
     fontFamily: 'Cairo',
+    marginBottom: 2,
+  },
+  devName: {
+    color: '#e2e8f0',
+    fontSize: 13,
+    fontFamily: 'CairoBold',
+  },
+  devNameEn: {
+    color: '#e2e8f0',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 });
