@@ -48,6 +48,9 @@
           ]
         }
       ]
-    ]
+    ],
+    "experiments": {
+      "baseUrl": "/Sadaqah-Gaza"
+    }
   }
 }
