@@ -19,21 +19,35 @@
     },
     "android": {
       "package": "com.amirnofal.azkar",
-      "versionCode": 1,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#071a0b"
-      }
+      },
+      "largeHeap": true
     },
     "web": {
-      "favicon": "./assets/icon.png"
+      "favicon": "./assets/icon.png",
+      "bundler": "metro"
     },
     "icon": "./assets/icon.png",
-    "owner": "its.hazzm",
+    "owner": "hazm-nofal",
     "extra": {
       "eas": {
-        "projectId": "87a2791b-36cf-480f-a1e5-f1aa57ec2f96"
+        "projectId": "8004aa18-1648-4441-9d1e-913b6113e309"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#c9a84c",
+          "sounds": [
+            "./assets/sounds/takbeer.mp3"
+          ]
+        }
+      ]
+    ]
   }
 }

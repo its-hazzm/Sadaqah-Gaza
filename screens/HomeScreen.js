@@ -142,7 +142,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.contactContainer}>
               <Text style={[styles.devTitle, { textAlign: 'left', marginBottom: 6 }]}>للتواصل</Text>
               <View style={styles.socialIcons}>
-                <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL('https://wa.me/message/KXT6CEGORRKWD1').catch(err => console.error('Error opening WhatsApp', err))}>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL('https://wa.me/972568988192').catch(err => console.error('Error opening WhatsApp', err))}>
                   <FontAwesome5 name="whatsapp" size={18} color="#25D366" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL('https://instagram.com/hazm_nofal').catch(err => console.error('Error opening Instagram', err))}>
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardWrapper: {
-    width: (width - 55) / 2, // 2 columns
+    width: '48%', // 2 columns
     marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },

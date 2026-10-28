@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { QuranData } from '../data/quran_offline';
+import { TafsirData } from '../data/tafsir_offline';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   FlatList, StatusBar, TextInput,
@@ -12,92 +14,87 @@ export default function QuranSearchScreen({ navigation }) {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState(false);
 
-  const search = async () => {
+  // 1. تسوية عثمانية تقليدية (حذف الألف الخنجرية)
+  const normUthmani = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/[\u064B-\u065F\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED\u0670]/g, '')
+      .replace(/[أإآٱ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .trim()
+      .replace(/\s+/g, ' ');
+  };
+
+  // 2. تسوية إملائية حديثة وذكية (تحويل الألف الخنجرية والرسم العثماني لإملاء معاصر)
+  const normModern = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/\u0670\u0648/g, 'ا') // الصلاة والزكاة والحياة
+      .replace(/\u0670/g, 'ا')   // أعطيناك، إبراهيم، إسماعيل، مالك
+      .replace(/[\u064B-\u065F\u06D6-\u06DC\u06DF-\u06E8\u06EA-\u06ED]/g, '')
+      .replace(/[أإآٱ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .trim()
+      .replace(/\s+/g, ' ');
+  };
+
+  const search = () => {
     const q = query.trim();
     if (!q || q.length < 2) return;
     Keyboard.dismiss();
 
-    try {
-      setLoading(true);
-      setError(false);
-      setResults([]);
-      setSearched(true);
-
-      // 1. البحث في النص النظيف أولاً (بدون تشكيل لسهولة المطابقة)
-      let matches = [];
+    setLoading(true);
+    setError(false);
+    setSearched(true);
+    
+    setTimeout(() => {
       try {
-        const res = await fetch(
-          `https://api.alquran.cloud/v1/search/${encodeURIComponent(q)}/all/quran-simple-clean`
-        );
-        const json = await res.json();
-        if (json.code === 200 && json.data?.matches?.length) {
-          matches = json.data.matches;
-        }
-      } catch {}
+        const q1 = normUthmani(q);
+        const q2 = normModern(q);
+        const matches = [];
 
-      // لو ما لقى، نجرب البحث في الرسم العثماني
-      if (!matches.length) {
-        try {
-          const res = await fetch(
-            `https://api.alquran.cloud/v1/search/${encodeURIComponent(q)}/all/quran-uthmani`
-          );
-          const json = await res.json();
-          if (json.code === 200 && json.data?.matches?.length) {
-            matches = json.data.matches;
-          }
-        } catch {}
-      }
-
-      if (!matches.length) {
-        setResults([]);
-        return;
-      }
-
-      // أخذ أول 15 نتيجة وجلب بيانات الصفحة والرسم العثماني والتفسير لكل آية
-      const topMatches = matches.slice(0, 15);
-      const detailedResults = await Promise.all(
-        topMatches.map(async (m) => {
-          try {
-            const detailRes = await fetch(
-              `https://api.alquran.cloud/v1/ayah/${m.number}/editions/quran-uthmani,ar.muyassar`
-            );
-            const detailJson = await detailRes.json();
-            if (detailJson.code === 200 && Array.isArray(detailJson.data)) {
-              const uthmaniData = detailJson.data[0];
-              const tafsirData = detailJson.data[1];
-              return {
-                number: m.number,
-                numberInSurah: m.numberInSurah,
-                surah: uthmaniData.surah || m.surah,
-                page: uthmaniData.page, // رقم الصفحة الدقيق في المصحف
-                juz: uthmaniData.juz,
-                uthmaniText: uthmaniData.text,
-                cleanText: m.text,
-                tafsir: tafsirData?.text || 'لا يوجد تفسير متاح حالياً',
-              };
+        for (let p = 1; p <= 604; p++) {
+          const pageAyahs = QuranData[p]?.ayahs;
+          if (!pageAyahs) continue;
+          
+          for (let ayah of pageAyahs) {
+            let textToSearch = ayah.text;
+            if (ayah.surah.number !== 1 && ayah.numberInSurah === 1 && textToSearch.startsWith('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ')) {
+              textToSearch = textToSearch.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ', '');
             }
-          } catch {}
+            
+            const a1 = normUthmani(textToSearch);
+            const a2 = normModern(textToSearch);
 
-          // Fallback إذا فشل جلب التفاصيل
-          return {
-            number: m.number,
-            numberInSurah: m.numberInSurah,
-            surah: m.surah,
-            page: 1,
-            juz: 1,
-            uthmaniText: m.text,
-            cleanText: m.text,
-            tafsir: '',
-          };
-        })
-      );
+            // مطابقة مرنة فائقة الذكاء (سواء كتب المستخدم إملاء حديثاً أو عثمانياً)
+            const isMatch = a1.includes(q1) || a2.includes(q1) || a1.includes(q2) || a2.includes(q2);
 
-      setResults(detailedResults);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+            if (isMatch) {
+              matches.push({
+                number: ayah.number,
+                numberInSurah: ayah.numberInSurah,
+                surah: ayah.surah,
+                page: p,
+                uthmaniText: textToSearch,
+                cleanText: a2,
+                tafsir: (TafsirData[p] && TafsirData[p][ayah.number]) ? TafsirData[p][ayah.number] : 'لا يوجد تفسير متاح'
+              });
+              if (matches.length >= 30) break;
+            }
+          }
+          if (matches.length >= 30) break;
+        }
+
+        setResults(matches);
+      } catch (e) {
+        console.error(e);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }, 50);
   };
 
   const highlightText = (text, keyword) => {

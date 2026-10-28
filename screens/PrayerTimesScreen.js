@@ -18,58 +18,93 @@ export default function PrayerTimesScreen({ navigation }) {
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [locationName, setLocationName] = useState('جاري تحديد الموقع...');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
 
     useEffect(() => {
+    // 0. إنشاء قناة الإشعارات الرسمية لنظام أندرويد لربط صوت أذان الحرم المكي
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('prayer_notifications', {
+        name: 'تنبيهات الصلاة والأذان',
+        importance: Notifications.AndroidImportance.MAX,
+        sound: 'takbeer.mp3',
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#c9a84c',
+      }).catch(e => console.warn('Channel setup bypassed:', e));
+    }
+
+    // 1. حساب فوري لمواقيت الصلاة وعرضها مباشرة بدون أي تعليق
+    const defaultCoords = new Coordinates(31.5017, 34.4668);
+    const date = new Date();
+    const params = CalculationMethod.MuslimWorldLeague();
+    const initialPrayers = new PrayerTimes(defaultCoords, date, params);
+    
+    setPrayerTimes(initialPrayers);
+    setLocationName('غزة (الموقع الافتراضي)');
+    setLoading(false); // إخفاء دائرة التحميل فوراً!
+
+    // 2. محاولة فحص حالة الإشعارات بهدوء في الخلفية
     (async () => {
       try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        let coords;
-        
-        if (status !== 'granted') {
-          coords = new Coordinates(31.5017, 34.4668);
-          setLocationName('غزة (افتراضي للصلاحيات)');
-        } else {
-          try {
-            let location = await Location.getCurrentPositionAsync({});
-            coords = new Coordinates(location.coords.latitude, location.coords.longitude);
-            
-            try {
-              let reverseGeocode = await Location.reverseGeocodeAsync({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude
-              });
-              
-              if (reverseGeocode.length > 0) {
-                const place = reverseGeocode[0];
-                setLocationName(`${place.city || place.region}, ${place.country}`);
-              } else {
-                setLocationName('موقعك (بدون انترنت)');
-              }
-            } catch (e) {
-              setLocationName('موقعك (بدون انترنت)');
-            }
-          } catch(e) {
-             // If GPS fails completely, fallback to Gaza
-             coords = new Coordinates(31.5017, 34.4668);
-             setLocationName('غزة (افتراضي - بدون انترنت)');
+        if (Platform.OS !== 'web') {
+          const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+          if (scheduled && scheduled.length > 0) {
+            setNotificationsEnabled(true);
           }
         }
+      } catch (e) {
+        console.warn('Notifications check bypassed:', e);
+      }
+    })();
 
-        const date = new Date();
-        const params = CalculationMethod.MuslimWorldLeague();
-        const prayers = new PrayerTimes(coords, date, params);
-        
-        setPrayerTimes(prayers);
-        setLoading(false);
-      } catch (error) {
-        console.error(error);
-        
-        // Final fallback if EVERYTHING crashes
-        const fallbackCoords = new Coordinates(31.5017, 34.4668);
-        const prayers = new PrayerTimes(fallbackCoords, new Date(), CalculationMethod.MuslimWorldLeague());
-        setPrayerTimes(prayers);
-        setLocationName('غزة (بدون انترنت)');
-        setLoading(false);
+    // 3. محاولة تحديد الموقع الدقيق بالخلفية مع حد أقصى 3 ثوانٍ فقط لمنع أي تعليق
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+
+        // تجربة جلب آخر موقع محفوظ فورياً أولاً
+        let location = await Location.getLastKnownPositionAsync({});
+
+        // إذا لم يتوفر، نجلب الموقع الحالي مع مهلة 3 ثوانٍ فقط (Timeout)
+        if (!location) {
+          const locationPromise = Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+          });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Location timeout')), 3000)
+          );
+          location = await Promise.race([locationPromise, timeoutPromise]);
+        }
+
+        if (location && location.coords) {
+          const accurateCoords = new Coordinates(
+            location.coords.latitude,
+            location.coords.longitude
+          );
+          const updatedPrayers = new PrayerTimes(accurateCoords, new Date(), params);
+          setPrayerTimes(updatedPrayers);
+
+          // محاولة جلب اسم المدينة بهدوء
+          try {
+            const reverseGeocode = await Promise.race([
+              Location.reverseGeocodeAsync({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2500))
+            ]);
+            if (reverseGeocode && reverseGeocode.length > 0) {
+              const place = reverseGeocode[0];
+              setLocationName(`${place.city || place.region || ''}, ${place.country || ''}`);
+            } else {
+              setLocationName('موقعك الحالي');
+            }
+          } catch {
+            setLocationName('موقعك الحالي');
+          }
+        }
+      } catch (err) {
+        console.warn('Location background update skipped/timed out:', err);
       }
     })();
   }, []);
@@ -86,65 +121,88 @@ export default function PrayerTimesScreen({ navigation }) {
   };
 
   const schedulePrayerNotifications = async () => {
-    if (!prayerTimes) return;
+    if (!prayerTimes || btnLoading) return;
 
-    if (notificationsEnabled) {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      setNotificationsEnabled(false);
-      if (Platform.OS !== 'web') {
-        Alert.alert('تم الإيقاف', 'تم إيقاف إشعارات الصلاة بنجاح.');
-      } else {
-        alert('تم الإيقاف: تم إيقاف إشعارات الصلاة بنجاح.');
+    try {
+      setBtnLoading(true);
+
+      if (notificationsEnabled) {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        setNotificationsEnabled(false);
+        if (Platform.OS !== 'web') {
+          Alert.alert('تم الإيقاف', 'تم إيقاف إشعارات الصلاة بنجاح.');
+        } else {
+          alert('تم الإيقاف: تم إيقاف إشعارات الصلاة بنجاح.');
+        }
+        return;
       }
-      return;
-    }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') {
-      if (Platform.OS !== 'web') {
-        Alert.alert('تنبيه', 'يجب إعطاء صلاحية الإشعارات من إعدادات الهاتف.');
-      }
-      return;
-    }
-
-    // Cancel existing
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    const prayersToSchedule = [
-      { id: 'fajr', name: 'الفجر', time: prayerTimes.fajr },
-      { id: 'dhuhr', name: 'الظهر', time: prayerTimes.dhuhr },
-      { id: 'asr', name: 'العصر', time: prayerTimes.asr },
-      { id: 'maghrib', name: 'المغرب', time: prayerTimes.maghrib },
-      { id: 'isha', name: 'العشاء', time: prayerTimes.isha },
-    ];
-
-    const now = new Date();
-
-    for (let prayer of prayersToSchedule) {
-      if (prayer.time > now) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `حان الآن موعد أذان ${prayer.name}`,
-            body: 'تطبيق الشهيد أمير نوفل يذكرك بالصلاة',
-            sound: true,
-          },
-          trigger: {
-            date: prayer.time,
-          },
+      // التأكد من جاهزية قناة الإشعارات مع صوت الأذان في أندرويد
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('prayer_notifications', {
+          name: 'تنبيهات الصلاة والأذان',
+          importance: Notifications.AndroidImportance.MAX,
+          sound: 'takbeer.mp3',
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#c9a84c',
         });
       }
-    }
 
-    setNotificationsEnabled(true);
-    if (Platform.OS !== 'web') {
-      Alert.alert('تم التفعيل', 'تم تفعيل إشعارات الصلاة بنجاح.');
-    } else {
-      alert('تم التفعيل: تم تفعيل إشعارات الصلاة بنجاح. (ملاحظة: الإشعارات تعمل بشكل أفضل على التطبيق).');
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        if (Platform.OS !== 'web') {
+          Alert.alert('تنبيه', 'يجب إعطاء صلاحية الإشعارات من إعدادات الهاتف.');
+        }
+        return;
+      }
+
+      // إلغاء أي إشعارات قديمة لتجنب التكرار
+      await Notifications.cancelAllScheduledNotificationsAsync();
+
+      const prayersToSchedule = [
+        { id: 'fajr', name: 'الفجر', time: prayerTimes.fajr },
+        { id: 'dhuhr', name: 'الظهر', time: prayerTimes.dhuhr },
+        { id: 'asr', name: 'العصر', time: prayerTimes.asr },
+        { id: 'maghrib', name: 'المغرب', time: prayerTimes.maghrib },
+        { id: 'isha', name: 'العشاء', time: prayerTimes.isha },
+      ];
+
+      if (Platform.OS !== 'web') {
+        for (let prayer of prayersToSchedule) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `حان الآن موعد أذان ${prayer.name}`,
+              body: 'تطبيق الشهيد أمير نوفل يذكرك بالصلاة',
+              sound: 'takbeer.mp3',
+              channelId: 'prayer_notifications', // ربط القناة الرسمية لتشغيل صوت الأذان في أندرويد
+            },
+            trigger: {
+              hour: prayer.time.getHours(),
+              minute: prayer.time.getMinutes(),
+              repeats: true,
+            },
+          });
+        }
+      }
+
+      setNotificationsEnabled(true);
+      if (Platform.OS !== 'web') {
+        Alert.alert('تم التفعيل', 'تم تفعيل إشعارات الصلاة بأذان الحرم المكي بنجاح.');
+      } else {
+        alert('تم التفعيل (محاكاة): الإشعارات المتكررة تعمل على هواتف الجوال.');
+      }
+    } catch (error) {
+      console.error('Error scheduling notifications:', error);
+      if (Platform.OS !== 'web') {
+        Alert.alert('خطأ', 'حدث خطأ أثناء تفعيل الإشعارات.');
+      }
+    } finally {
+      setBtnLoading(false);
     }
   };
 
@@ -195,16 +253,22 @@ export default function PrayerTimesScreen({ navigation }) {
         </View>
 
         <TouchableOpacity 
-          style={[styles.notifyBtn, notificationsEnabled && styles.notifyBtnActive]}
+          style={[styles.notifyBtn, notificationsEnabled && styles.notifyBtnActive, btnLoading && { opacity: 0.7 }]}
           onPress={schedulePrayerNotifications}
+          disabled={btnLoading}
+          activeOpacity={0.8}
         >
-          <MaterialCommunityIcons 
-            name={notificationsEnabled ? "bell-check" : "bell-ring"} 
-            size={24} 
-            color={notificationsEnabled ? "#071a0b" : "#c9a84c"} 
-          />
+          {btnLoading ? (
+            <ActivityIndicator size="small" color={notificationsEnabled ? "#071a0b" : "#c9a84c"} />
+          ) : (
+            <MaterialCommunityIcons 
+              name={notificationsEnabled ? "bell-check" : "bell-ring"} 
+              size={24} 
+              color={notificationsEnabled ? "#071a0b" : "#c9a84c"} 
+            />
+          )}
           <Text style={[styles.notifyText, notificationsEnabled && styles.notifyTextActive]}>
-            {notificationsEnabled ? 'إيقاف إشعارات الصلاة' : 'تفعيل إشعارات الصلاة'}
+            {btnLoading ? 'جاري المعالجة...' : notificationsEnabled ? 'إيقاف إشعارات الصلاة' : 'تفعيل إشعارات الصلاة'}
           </Text>
         </TouchableOpacity>
 
