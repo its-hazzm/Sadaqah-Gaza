@@ -264,6 +264,7 @@ export default function MushafScreen({ route, navigation }) {
   const [fontScale, setFontScale] = useState(1);
   const [listLayout, setListLayout] = useState(null);
   const isNavigating = useRef(false);
+  const targetHandledRef = useRef(null);
 
   const scrollToPage = useCallback((pageNum, animated = false) => {
     if (!flatListRef.current || !listLayout) return;
@@ -279,11 +280,16 @@ export default function MushafScreen({ route, navigation }) {
   useEffect(() => {
     const pageFromRoute = route?.params?.page ? parseInt(route.params.page) : null;
     if (pageFromRoute && pageFromRoute >= 1 && pageFromRoute <= TOTAL_PAGES) {
-      setCurrentPage(pageFromRoute);
-      if (listLayout) {
+      if (targetHandledRef.current !== pageFromRoute && listLayout) {
+        targetHandledRef.current = pageFromRoute;
+        isNavigating.current = true;
+        setCurrentPage(pageFromRoute);
         setTimeout(() => {
           scrollToPage(pageFromRoute, false);
-        }, 40);
+          setTimeout(() => {
+            isNavigating.current = false;
+          }, 350);
+        }, 50);
       }
     }
   }, [route?.params?.page, listLayout, scrollToPage]);
@@ -345,6 +351,7 @@ export default function MushafScreen({ route, navigation }) {
   }), [isDarkMode]);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+    if (isNavigating.current) return;
     if (viewableItems && viewableItems.length > 0) {
       setCurrentPage(viewableItems[0].item);
     }
@@ -413,11 +420,18 @@ export default function MushafScreen({ route, navigation }) {
 
       {/* FlatList for Pages */}
       <View 
-        style={{ flex: 1 }}
+        style={{ flex: 1, overflow: 'hidden' }}
         onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;
           if (width > 0 && height > 0) {
-            setListLayout({ width, height });
+            setListLayout((prev) => {
+              if (!prev) return { width, height };
+              // تثبيت الأبعاد ضد تذبذب شريط عنوان متصفح الجوال لمنع قفز وتذبذب الصفحات
+              if (Math.abs(prev.width - width) > 20 || Math.abs(prev.height - height) > 120) {
+                return { width, height };
+              }
+              return prev;
+            });
           }
         }}
       >
@@ -436,7 +450,8 @@ export default function MushafScreen({ route, navigation }) {
             pagingEnabled={true}
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
-            initialScrollIndex={currentPage - 1}
+            initialScrollIndex={targetPageFromRoute > 1 ? targetPageFromRoute - 1 : 0}
+            initialNumToRender={2}
             getItemLayout={(data, index) => ({
               length: isVerticalSwipe ? listLayout.height : listLayout.width,
               offset: (isVerticalSwipe ? listLayout.height : listLayout.width) * index,
