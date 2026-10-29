@@ -77,6 +77,14 @@ if (fs.existsSync(distDir)) {
     console.log('Updated paths to /Sadaqah-Gaza/ in dist/index.html');
   }
 
+  // Duplicate assets/node_modules to assets/modules so Git and GitHub Pages never ignore them
+  const nodeModulesDir = path.join(distDir, 'assets', 'node_modules');
+  const modulesDir = path.join(distDir, 'assets', 'modules');
+  if (fs.existsSync(nodeModulesDir)) {
+    fs.cpSync(nodeModulesDir, modulesDir, { recursive: true });
+    console.log('Copied assets/node_modules to assets/modules');
+  }
+
   const bundlesDir = path.join(distDir, 'bundles');
   if (fs.existsSync(bundlesDir)) {
     const bundleFiles = fs.readdirSync(bundlesDir);
@@ -85,6 +93,7 @@ if (fs.existsSync(distDir)) {
         const filePath = path.join(bundlesDir, file);
         let code = fs.readFileSync(filePath, 'utf8');
         code = code.replace(/"\/assets\//g, '"/Sadaqah-Gaza/assets/');
+        code = code.replace(/\/assets\/node_modules\//g, '/assets/modules/');
         fs.writeFileSync(filePath, code, 'utf8');
         console.log(`Patched asset subpath in ${file}`);
       }
