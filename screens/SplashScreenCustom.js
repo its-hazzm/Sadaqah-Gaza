@@ -1,73 +1,93 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, ImageBackground, Dimensions, StatusBar } from 'react-native';
+import {
+  View, Text, StyleSheet, Animated, ImageBackground, Dimensions, StatusBar, TouchableOpacity,
+} from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreenCustom({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const timerRef = useRef(null);
+  const isNavigating = useRef(false);
+
+  const navigateToHome = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 350,
+      useNativeDriver: true,
+    }).start(() => {
+      navigation.replace('Home');
+    });
+  };
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1800,
+        duration: 700,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 4,
+        friction: 5,
         useNativeDriver: true,
       })
     ]).start();
 
-    const timer = setTimeout(() => {
-      // Fade out before navigating to Home
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }).start(() => {
-        navigation.replace('Home');
-      });
-    }, 4000); // 4 seconds total screen time
+    timerRef.current = setTimeout(() => {
+      navigateToHome();
+    }, 1800); // انتقال تلقائي سريع ومريح بعد ثانية وثمانية أعشار بدلاً من أربع ثوانٍ
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [fadeAnim, scaleAnim, navigation]);
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#071a0b" hidden={true} />
-      <ImageBackground
-        source={require('../assets/splash.jpg')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <Animated.View style={[styles.overlay, { transform: [{ scale: scaleAnim }] }]}>
-          <View style={styles.textContainer}>
-            <Text style={styles.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
-            
-            <View style={styles.separatorTop} />
-            
-            <Text style={styles.mainText}>صَدَقَةٌ جَارِيَةٌ</Text>
-            
-            <Text style={styles.subText}>
-              عَنْ رُوحِ الشَّهِيدِ بِإِذْنِ اللَّهِ
-            </Text>
-            
-            <Text style={styles.nameText}>
-              أَمِير مُحَمَّد نُوفَل
-            </Text>
-            
-            <Text style={styles.subText}>
-              وَأَمْوَاتِ الْمُسْلِمِينَ
-            </Text>
-            
-            <View style={styles.separatorBottom} />
-          </View>
-        </Animated.View>
-      </ImageBackground>
-    </Animated.View>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={navigateToHome}
+      style={{ flex: 1 }}
+    >
+      <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#071a0b" hidden={true} />
+        <ImageBackground
+          source={require('../assets/splash.jpg')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          <Animated.View style={[styles.overlay, { transform: [{ scale: scaleAnim }] }]}>
+            <View style={styles.textContainer}>
+              <Text style={styles.bismillah}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+              
+              <View style={styles.separatorTop} />
+              
+              <Text style={styles.mainText}>صَدَقَةٌ جَارِيَةٌ</Text>
+              
+              <Text style={styles.subText}>
+                عَنْ رُوحِ الشَّهِيدِ بِإِذْنِ اللَّهِ
+              </Text>
+              
+              <Text style={styles.nameText}>
+                أَمِير مُحَمَّد نُوفَل
+              </Text>
+              
+              <Text style={styles.subText}>
+                وَأَمْوَاتِ الْمُسْلِمِينَ
+              </Text>
+              
+              <View style={styles.separatorBottom} />
+
+              <Text style={styles.skipHint}>اضغط في أي مكان للمتابعة سريعاً</Text>
+            </View>
+          </Animated.View>
+        </ImageBackground>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -150,5 +170,12 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 1, height: 2 },
     textShadowRadius: 5,
+  },
+  skipHint: {
+    fontFamily: 'Cairo',
+    fontSize: 12,
+    color: '#c9a84caa',
+    marginTop: 18,
+    textAlign: 'center',
   }
 });
