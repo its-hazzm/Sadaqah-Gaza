@@ -40,6 +40,10 @@ const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale, isTajwee
   const dynamicAyahNumSize = Math.floor(dynamicFontSize * 0.8);
   
   const tajweedColors = useMemo(() => getTajweedColors(isDarkMode), [isDarkMode]);
+  const ayahTextStyle = useMemo(() => ({
+    fontSize: dynamicFontSize,
+    lineHeight: dynamicLineHeight,
+  }), [dynamicFontSize, dynamicLineHeight]);
 
   const [activeTafsir, setActiveTafsir] = useState(null);
   const lastTapRef = useRef({});
@@ -79,7 +83,14 @@ const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale, isTajwee
   const pageSurahTitle = [...new Set(groups.map(g => g.surahName.replace('سُورَةُ ', '').replace('سورة ', '')))].join(' • ');
 
   return (
-    <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} nestedScrollEnabled={true}>
+    <ScrollView 
+      style={styles.scroll} 
+      showsVerticalScrollIndicator={false} 
+      contentContainerStyle={styles.scrollContent} 
+      nestedScrollEnabled={true}
+      scrollEventThrottle={16}
+      bounces={false}
+    >
       {/* Top Header outside the frame */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 6 }}>
         <Text style={{ fontSize: 15, fontFamily: 'Amiri', color: theme.primary, fontWeight: 'bold' }}>الجزء {toArabicNum(data.ayahs[0].juz)}</Text>
@@ -129,11 +140,11 @@ const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale, isTajwee
                     return (
                       <Text key={ayah.number}>
                         <Text 
-                          style={[styles.ayahText, { fontSize: dynamicFontSize, lineHeight: dynamicLineHeight }]} 
+                          style={[styles.ayahText, ayahTextStyle]} 
                           onPress={() => handleAyahPress(ayah, group.surahName, text)}
                         >
                           {isTajweedEnabled
-                            ? renderTajweedVerse(text, theme.textVerse, tajweedColors, { fontSize: dynamicFontSize, lineHeight: dynamicLineHeight })
+                            ? renderTajweedVerse(text, theme.textVerse, tajweedColors, ayahTextStyle)
                             : text
                           }
                           <Text style={[styles.ayahNum, { color: theme.primary, fontSize: dynamicAyahNumSize }]}> ﴿{toArabicNum(ayah.numberInSurah)}﴾ </Text>
@@ -343,12 +354,13 @@ export default function MushafScreen({ route, navigation }) {
     btnBg: isDarkMode ? '#0d2b14' : '#edf2f7',
   }), [isDarkMode]);
 
-  const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (isNavigating.current) return;
     if (viewableItems && viewableItems.length > 0) {
-      setCurrentPage(viewableItems[0].item);
+      const newPage = viewableItems[0].item;
+      setCurrentPage((prev) => (prev !== newPage ? newPage : prev));
     }
-  }, []);
+  }).current;
 
   const renderItem = useCallback(({ item }) => (
     <View style={{ width: isVerticalSwipe ? '100%' : listLayout.width, height: isVerticalSwipe ? listLayout.height : '100%' }}>
@@ -451,8 +463,10 @@ export default function MushafScreen({ route, navigation }) {
             onScrollToIndexFailed={() => {}}
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-            windowSize={7}
-            maxToRenderPerBatch={5}
+            windowSize={3}
+            maxToRenderPerBatch={2}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={1}
             removeClippedSubviews={Platform.OS !== 'web'}
           />
         )}

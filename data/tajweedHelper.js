@@ -12,47 +12,79 @@ export const getTajweedColors = (isDarkMode) => ({
 // تعبير نمطي فائق الدقة لرصد أحكام التجويد في الرسم العثماني
 const TAJWEED_REGEX = /([\u0622]|[\u0621-\u064A\u0670-\u06D3]?[\u0653])|([نم][\u0651]|[\u06E2]|[\u064B\u064C\u064D]|ن(?=[\u0652\s]*[تثجدذزسشصضطظفقك]))|([قطبجد][\u0652])|([\u0671]|[\u06DF]|ل(?=[\s]*[تثدذرزسشصضطظلن][\u0651]))/g;
 
-export function renderTajweedVerse(text, defaultColor, colors, baseStyle) {
-  if (!text) return null;
+// ذاكرة تخزين مؤقت للتحليل الصرفي لتفادي تكرار التعبيرات النمطية وتسريع الأداء
+const tajweedCache = new Map();
+
+function parseTajweedSegments(text) {
+  if (tajweedCache.has(text)) {
+    return tajweedCache.get(text);
+  }
 
   TAJWEED_REGEX.lastIndex = 0;
   let lastIndex = 0;
-  const elements = [];
+  const segments = [];
   let match;
-  let keyIndex = 0;
 
   while ((match = TAJWEED_REGEX.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      elements.push(
-        <Text key={`norm_${keyIndex++}`} style={[baseStyle, { color: defaultColor }]}>
-          {text.substring(lastIndex, match.index)}
-        </Text>
-      );
+      segments.push({
+        text: text.substring(lastIndex, match.index),
+        type: 'norm',
+      });
     }
 
     const [full, madd, ghunnah, qalqalah, silent] = match;
-    let color = defaultColor;
-    if (madd) color = colors.madd;
-    else if (ghunnah) color = colors.ghunnah;
-    else if (qalqalah) color = colors.qalqalah;
-    else if (silent) color = colors.silent;
+    let type = 'norm';
+    if (madd) type = 'madd';
+    else if (ghunnah) type = 'ghunnah';
+    else if (qalqalah) type = 'qalqalah';
+    else if (silent) type = 'silent';
 
-    elements.push(
-      <Text key={`taj_${keyIndex++}`} style={[baseStyle, { color, fontWeight: silent ? 'normal' : 'bold' }]}>
-        {full}
-      </Text>
-    );
+    segments.push({
+      text: full,
+      type,
+    });
 
     lastIndex = TAJWEED_REGEX.lastIndex;
   }
 
   if (lastIndex < text.length) {
-    elements.push(
-      <Text key={`end_${keyIndex++}`} style={[baseStyle, { color: defaultColor }]}>
-        {text.substring(lastIndex)}
-      </Text>
-    );
+    segments.push({
+      text: text.substring(lastIndex),
+      type: 'norm',
+    });
   }
 
-  return elements;
+  tajweedCache.set(text, segments);
+  return segments;
+}
+
+export function renderTajweedVerse(text, defaultColor, colors, baseStyle) {
+  if (!text) return null;
+
+  const segments = parseTajweedSegments(text);
+  return segments.map((seg, idx) => {
+    if (seg.type === 'norm') {
+      return (
+        <Text key={`norm_${idx}`} style={[baseStyle, { color: defaultColor }]}>
+          {seg.text}
+        </Text>
+      );
+    }
+
+    let color = defaultColor;
+    if (seg.type === 'madd') color = colors.madd;
+    else if (seg.type === 'ghunnah') color = colors.ghunnah;
+    else if (seg.type === 'qalqalah') color = colors.qalqalah;
+    else if (seg.type === 'silent') color = colors.silent;
+
+    return (
+      <Text
+        key={`taj_${idx}`}
+        style={[baseStyle, { color, fontWeight: seg.type === 'silent' ? 'normal' : 'bold' }]}
+      >
+        {seg.text}
+      </Text>
+    );
+  });
 }
