@@ -27,16 +27,30 @@ export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadFonts() {
-      await Font.loadAsync({
-        Amiri: Amiri_400Regular,
-        AmiriBold: Amiri_700Bold,
-        Cairo: Cairo_400Regular,
-        CairoBold: Cairo_700Bold,
-      });
-      setFontsLoaded(true);
+      try {
+        const fontPromise = Font.loadAsync({
+          Amiri: Amiri_400Regular,
+          AmiriBold: Amiri_700Bold,
+          Cairo: Cairo_400Regular,
+          CairoBold: Cairo_700Bold,
+        });
+        // الحد الأقصى للانتظار ثانية ونصف لضمان عدم تعليق التطبيق نهائياً
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
+        await Promise.race([fontPromise, timeoutPromise]);
+      } catch (e) {
+        console.warn('Font loading notice:', e);
+      } finally {
+        if (isMounted) {
+          setFontsLoaded(true);
+        }
+      }
     }
     loadFonts();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (!fontsLoaded) {

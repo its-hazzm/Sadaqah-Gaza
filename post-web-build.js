@@ -14,7 +14,14 @@ if (fs.existsSync(distDir)) {
   if (fs.existsSync(indexPath)) {
     let html = fs.readFileSync(indexPath, 'utf8');
     if (!html.includes('apple-mobile-web-app-capable')) {
-      html = html.replace('<title>صدقة - Gaza</title>', '<title>صدقة - Gaza</title>\n    <meta name="apple-mobile-web-app-capable" content="yes" />\n    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />\n    <meta name="apple-mobile-web-app-title" content="صدقة" />\n    <link rel="apple-touch-icon" href="./icon.png" />');
+      html = html.replace('<title>صدقة - Gaza</title>', `<title>صدقة - Gaza</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="صدقة" />
+    <link rel="apple-touch-icon" href="/Sadaqah-Gaza/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet" />`);
     }
     // Make bundle and asset links point to /Sadaqah-Gaza/ for GitHub Pages
     html = html.replace(/src="(\.\/|\/)bundles\//g, 'src="/Sadaqah-Gaza/bundles/');
@@ -46,4 +53,8 @@ if (fs.existsSync(distDir)) {
 
   const redirectsPath = path.join(distDir, '_redirects');
   fs.writeFileSync(redirectsPath, '/*    /index.html   200\n', 'utf8');
+
+  const nojekyllPath = path.join(distDir, '.nojekyll');
+  fs.writeFileSync(nojekyllPath, '', 'utf8');
+  console.log('Created dist/.nojekyll');
 }
