@@ -32,7 +32,7 @@ function groupBySurah(ayahs) {
 
 const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale, isTajweedEnabled, isDarkMode }) => {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
-  const [data, setData] = useState(null);
+  const data = QuranData[pageNum];
   
   const availableHeight = listLayout ? listLayout.height : Dimensions.get('window').height - 150;
   const dynamicLineHeight = Math.floor((availableHeight / 17) * (fontScale || 1)); 
@@ -41,7 +41,6 @@ const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale, isTajwee
   
   const tajweedColors = useMemo(() => getTajweedColors(isDarkMode), [isDarkMode]);
 
-  const [loading, setLoading] = useState(true);
   const [activeTafsir, setActiveTafsir] = useState(null);
   const lastTapRef = useRef({});
 
@@ -68,16 +67,10 @@ const QuranPageContent = memo(({ pageNum, theme, listLayout, fontScale, isTajwee
     lastTapRef.current[ayah.number] = now;
   };
 
-  useEffect(() => {
-    setData(QuranData[pageNum]);
-    setLoading(false);
-  }, [pageNum]);
-
-  if (loading || !data) {
+  if (!data) {
     return (
       <View style={[styles.center, { width: SCREEN_WIDTH, height: '100%' }]}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.primary }]}>تحميل صفحة {pageNum} ...</Text>
       </View>
     );
   }
@@ -271,9 +264,9 @@ export default function MushafScreen({ route, navigation }) {
     const idx = Math.max(0, Math.min(TOTAL_PAGES - 1, pageNum - 1));
     const size = isVerticalSwipe ? listLayout.height : listLayout.width;
     try {
-      flatListRef.current.scrollToIndex({ index: idx, animated });
-    } catch (e) {
       flatListRef.current.scrollToOffset({ offset: idx * size, animated });
+    } catch (e) {
+      console.warn(e);
     }
   }, [listLayout, isVerticalSwipe]);
 
@@ -284,15 +277,15 @@ export default function MushafScreen({ route, navigation }) {
         targetHandledRef.current = pageFromRoute;
         isNavigating.current = true;
         setCurrentPage(pageFromRoute);
+        const size = isVerticalSwipe ? listLayout.height : listLayout.width;
+        const targetOffset = (pageFromRoute - 1) * size;
+        flatListRef.current?.scrollToOffset({ offset: targetOffset, animated: false });
         setTimeout(() => {
-          scrollToPage(pageFromRoute, false);
-          setTimeout(() => {
-            isNavigating.current = false;
-          }, 350);
-        }, 50);
+          isNavigating.current = false;
+        }, 400);
       }
     }
-  }, [route?.params?.page, listLayout, scrollToPage]);
+  }, [route?.params?.page, listLayout, isVerticalSwipe]);
 
   useEffect(() => {
     AsyncStorage.getItem('quranFontScale').then(val => {
@@ -447,29 +440,19 @@ export default function MushafScreen({ route, navigation }) {
             keyExtractor={(item) => item.toString()}
             renderItem={renderItem}
             horizontal={!isVerticalSwipe}
-            pagingEnabled={true}
+            pagingEnabled={Platform.OS !== 'web'}
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
-            initialScrollIndex={targetPageFromRoute > 1 ? targetPageFromRoute - 1 : 0}
-            initialNumToRender={2}
             getItemLayout={(data, index) => ({
               length: isVerticalSwipe ? listLayout.height : listLayout.width,
               offset: (isVerticalSwipe ? listLayout.height : listLayout.width) * index,
               index,
             })}
-            onScrollToIndexFailed={(info) => {
-              const size = isVerticalSwipe ? listLayout.height : listLayout.width;
-              setTimeout(() => {
-                flatListRef.current?.scrollToOffset({
-                  offset: info.index * size,
-                  animated: false,
-                });
-              }, 50);
-            }}
+            onScrollToIndexFailed={() => {}}
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-            windowSize={5}
-            maxToRenderPerBatch={3}
+            windowSize={7}
+            maxToRenderPerBatch={5}
             removeClippedSubviews={Platform.OS !== 'web'}
           />
         )}
