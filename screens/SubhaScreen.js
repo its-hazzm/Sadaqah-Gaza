@@ -92,10 +92,10 @@ export default function SubhaScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <MaterialCommunityIcons name="arrow-right" size={28} color="#c9a84c" />
+          <Text style={styles.backText}>← رجوع</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>السبحة الإلكترونية</Text>
-        <View style={{ width: 28 }} />
+        <View style={{ width: 45 }} />
       </View>
 
       <View style={styles.content}>
@@ -144,22 +144,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#071a0b', borderBottomWidth: 1, borderBottomColor: '#c9a84c44',
   },
   backBtn: { padding: 5 },
+  backText: { color: '#c9a84c', fontSize: 16, fontFamily: 'CairoBold' },
   headerTitle: { color: '#c9a84c', fontSize: 20, fontFamily: 'CairoBold' },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 25, paddingHorizontal: 20 },
   zikrContainer: {
-    backgroundColor: 'transparent', padding: 25, borderRadius: 25,
-    borderWidth: 1, borderColor: '#c9a84c33', width: '100%', alignItems: 'center',
-    marginBottom: 40, borderStyle: 'dashed',
+    backgroundColor: 'rgba(201, 168, 76, 0.05)', paddingVertical: 18, paddingHorizontal: 20, borderRadius: 20,
+    borderWidth: 1, borderColor: '#c9a84c44', width: '100%', alignItems: 'center',
+    marginBottom: 15, borderStyle: 'dashed',
   },
-  zikrText: { color: '#c9a84c', fontSize: 28, fontFamily: 'Amiri', textAlign: 'center', lineHeight: 45 },
-  zikrHint: { color: '#cbd5e0', fontSize: 12, fontFamily: 'Cairo', marginTop: 10, opacity: 0.7 },
-  totalContainer: { alignItems: 'center', marginBottom: 40 },
-  totalLabel: { color: '#cbd5e0', fontSize: 16, fontFamily: 'Cairo' },
-  totalNumber: { color: '#c9a84c', fontSize: 24, fontFamily: 'CairoBold', marginTop: 5 },
+  zikrText: { color: '#c9a84c', fontSize: 24, fontFamily: 'Amiri', textAlign: 'center', lineHeight: 40 },
+  zikrHint: { color: '#cbd5e0', fontSize: 12, fontFamily: 'Cairo', marginTop: 8, opacity: 0.7 },
+  totalContainer: { alignItems: 'center', marginVertical: 10 },
+  totalLabel: { color: '#cbd5e0', fontSize: 15, fontFamily: 'Cairo' },
+  totalNumber: { color: '#c9a84c', fontSize: 24, fontFamily: 'CairoBold', marginTop: 4 },
   tapCircleWrapper: {
-    width: width * 0.55, height: width * 0.55, borderRadius: width,
+    width: width * 0.52, height: width * 0.52, borderRadius: width,
     shadowColor: '#c9a84c', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5, shadowRadius: 20, elevation: 20, marginBottom: 40,
+    shadowOpacity: 0.5, shadowRadius: 20, elevation: 20, marginVertical: 15,
   },
   tapCircleOuter: {
     flex: 1, borderRadius: width, alignItems: 'center', justifyContent: 'center',
@@ -169,8 +170,8 @@ const styles = StyleSheet.create({
     flex: 1, width: '100%', borderRadius: width, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: '#c9a84c44',
   },
-  tapNumber: { color: '#c9a84c', fontSize: 60, fontFamily: 'CairoBold', textShadowColor: '#c9a84c44', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 10 },
-  tapHint: { color: '#cbd5e0', fontSize: 14, fontFamily: 'Cairo', marginTop: -10, opacity: 0.7 },
-  resetBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#c9a84c11', borderWidth: 1, borderColor: '#c9a84c44', paddingVertical: 10, paddingHorizontal: 25, borderRadius: 30 },
+  tapNumber: { color: '#c9a84c', fontSize: 54, fontFamily: 'CairoBold', textShadowColor: '#c9a84c44', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 10 },
+  tapHint: { color: '#cbd5e0', fontSize: 14, fontFamily: 'Cairo', marginTop: -6, opacity: 0.7 },
+  resetBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#c9a84c11', borderWidth: 1, borderColor: '#c9a84c44', paddingVertical: 10, paddingHorizontal: 25, borderRadius: 30, marginTop: 10 },
   resetText: { color: '#c9a84c', fontSize: 15, fontFamily: 'Cairo', marginLeft: 8 },
 });
